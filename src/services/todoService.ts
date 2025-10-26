@@ -1,5 +1,5 @@
-import { FilterQuery, Types } from 'mongoose';
-import Todo, { ITodo, Priority } from '../models/Todo';
+import { Priority, Todo } from '@prisma/client';
+import { prisma } from '../database/connection';
 
 export interface CreateTodoDTO {
   title: string;
@@ -34,61 +34,59 @@ export interface ListQuery {
 }
 
 class TodoService {
-  private toObjectId(id: string): Types.ObjectId {
-    if (!Types.ObjectId.isValid(id)) {
-      throw new Error('ID inválido');
-    }
-    return new Types.ObjectId(id);
-  }
-
-  async create(userId: string, data: CreateTodoDTO): Promise<ITodo> {
+  async create(userId: string, data: CreateTodoDTO): Promise<Todo> {
     const dueDate = data.dueDate ? new Date(data.dueDate) : null;
 
-    const todo = await Todo.create({
-      user: this.toObjectId(userId),
-      title: data.title,
-      description: data.description ?? '',
-      dueDate,
-      completed: data.completed ?? false,
-      priority: data.priority ?? 'medium',
+    const todo = await prisma.todo.create({
+      data: {
+        userId,
+        title: data.title,
+        description: data.description ?? '',
+        dueDate,
+        completed: data.completed ?? false,
+        priority: data.priority ?? 'medium',
+      },
     });
 
     console.log(`📝 Todo criado: ${todo.id} por usuário ${userId}`);
     return todo;
   }
 
-  async list(userId: string, query: ListQuery): Promise<ITodo[]> {
-    const filter: FilterQuery<ITodo> = { user: this.toObjectId(userId) };
+  async list(userId: string, query: ListQuery): Promise<Todo[]> {
+    const where: any = { userId };
 
     if (typeof query.completed === 'string') {
       if (query.completed === 'true' || query.completed === 'false') {
-        filter.completed = query.completed === 'true';
+        where.completed = query.completed === 'true';
       }
     }
 
     if (query.priority) {
-      filter.priority = query.priority;
+      where.priority = query.priority;
     }
 
     if (query.title) {
-      filter.title = { $regex: query.title, $options: 'i' };
+      where.title = { contains: query.title, mode: 'insensitive' };
     }
 
     if (query.dueFrom || query.dueTo) {
-      filter.dueDate = {} as any;
-      if (query.dueFrom) (filter.dueDate as any).$gte = new Date(query.dueFrom);
-      if (query.dueTo) (filter.dueDate as any).$lte = new Date(query.dueTo);
+      where.dueDate = {};
+      if (query.dueFrom) where.dueDate.gte = new Date(query.dueFrom);
+      if (query.dueTo) where.dueDate.lte = new Date(query.dueTo);
     }
 
-    const todos = await Todo.find(filter).sort({ createdAt: -1 });
+    const todos = await prisma.todo.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+    });
     console.log(`📋 Listados ${todos.length} todos para usuário ${userId}`);
     return todos;
   }
 
-  async getById(userId: string, todoId: string): Promise<ITodo | null> {
-    const todo = await Todo.findById(this.toObjectId(todoId));
+  async getById(userId: string, todoId: string): Promise<Todo | null> {
+    const todo = await prisma.todo.findUnique({ where: { id: todoId } });
     if (!todo) return null;
-    if (todo.user.toString() !== userId) {
+    if (todo.userId !== userId) {
       const err = new Error('FORBIDDEN');
       // @ts-ignore sinalizar tipo de erro
       err.code = 403;
@@ -97,57 +95,65 @@ class TodoService {
     return todo;
   }
 
-  async replace(userId: string, todoId: string, data: UpdateTodoDTO): Promise<ITodo | null> {
-    const todo = await Todo.findById(this.toObjectId(todoId));
-    if (!todo) return null;
-    if (todo.user.toString() !== userId) {
+  async replace(userId: string, todoId: string, data: UpdateTodoDTO): Promise<Todo | null> {
+    const existing = await prisma.todo.findUnique({ where: { id: todoId } });
+    if (!existing) return null;
+    if (existing.userId !== userId) {
       const err = new Error('FORBIDDEN');
       // @ts-ignore
       err.code = 403;
       throw err;
     }
 
-    todo.title = data.title;
-    todo.description = data.description ?? '';
-    todo.completed = data.completed;
-    todo.priority = data.priority;
-    todo.dueDate = data.dueDate ? new Date(data.dueDate) : null;
-    await todo.save();
-    console.log(`✏️ Todo substituído: ${todo.id} por usuário ${userId}`);
-    return todo;
+    const updated = await prisma.todo.update({
+      where: { id: todoId },
+      data: {
+        title: data.title,
+        description: data.description ?? '',
+        completed: data.completed,
+        priority: data.priority,
+        dueDate: data.dueDate ? new Date(data.dueDate) : null,
+      },
+    });
+    console.log(`✏️ Todo substituído: ${updated.id} por usuário ${userId}`);
+    return updated;
   }
 
-  async updatePartial(userId: string, todoId: string, data: PartialUpdateTodoDTO): Promise<ITodo | null> {
-    const todo = await Todo.findById(this.toObjectId(todoId));
-    if (!todo) return null;
-    if (todo.user.toString() !== userId) {
+  async updatePartial(userId: string, todoId: string, data: PartialUpdateTodoDTO): Promise<Todo | null> {
+    const existing = await prisma.todo.findUnique({ where: { id: todoId } });
+    if (!existing) return null;
+    if (existing.userId !== userId) {
       const err = new Error('FORBIDDEN');
       // @ts-ignore
       err.code = 403;
       throw err;
     }
 
-    if (data.title !== undefined) todo.title = data.title;
-    if (data.description !== undefined) todo.description = data.description;
-    if (data.completed !== undefined) todo.completed = data.completed;
-    if (data.priority !== undefined) todo.priority = data.priority;
-    if (data.dueDate !== undefined) todo.dueDate = data.dueDate ? new Date(data.dueDate) : null;
-    await todo.save();
-    console.log(`🛠️ Todo atualizado parcialmente: ${todo.id} por usuário ${userId}`);
-    return todo;
+    const updated = await prisma.todo.update({
+      where: { id: todoId },
+      data: {
+        title: data.title !== undefined ? data.title : existing.title,
+        description: data.description !== undefined ? data.description : existing.description,
+        completed: data.completed !== undefined ? data.completed : existing.completed,
+        priority: data.priority !== undefined ? data.priority : existing.priority,
+        dueDate: data.dueDate !== undefined ? (data.dueDate ? new Date(data.dueDate) : null) : existing.dueDate,
+      },
+    });
+    console.log(`🛠️ Todo atualizado parcialmente: ${updated.id} por usuário ${userId}`);
+    return updated;
   }
 
   async remove(userId: string, todoId: string): Promise<boolean | null> {
-    const todo = await Todo.findById(this.toObjectId(todoId));
-    if (!todo) return null;
-    if (todo.user.toString() !== userId) {
+    const existing = await prisma.todo.findUnique({ where: { id: todoId } });
+    if (!existing) return null;
+    if (existing.userId !== userId) {
       const err = new Error('FORBIDDEN');
       // @ts-ignore
       err.code = 403;
       throw err;
     }
-    await todo.deleteOne();
-    console.log(`🗑️ Todo removido: ${todo.id} por usuário ${userId}`);
+    await prisma.todo.delete({ where: { id: todoId } });
+    console.log(`🗑️ Todo removido: ${todoId} por usuário ${userId}`);
     return true;
   }
 }

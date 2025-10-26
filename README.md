@@ -1,6 +1,6 @@
-# API de Autenticação com Node.js, TypeScript, Express e MongoDB
+# API de Autenticação com Node.js, TypeScript, Express e PostgreSQL (Prisma)
 
-API RESTful completa com autenticação JWT, desenvolvida com Node.js, TypeScript, Express e MongoDB, seguindo a arquitetura de camadas (controllers, services, models, routes, middlewares).
+API RESTful completa com autenticação JWT, desenvolvida com Node.js, TypeScript, Express e PostgreSQL usando Prisma ORM, seguindo a arquitetura de camadas (controllers, services, routes, middlewares, database).
 
 ## Link do vídeo de demonstração no YouTube parte I: https://youtu.be/ht48nmZeRqg
 
@@ -24,11 +24,14 @@ API RESTful completa com autenticação JWT, desenvolvida com Node.js, TypeScrip
 src/
 ├── controllers/      # Camada de controle (requisição/resposta)
 ├── services/         # Lógica de negócio
-├── models/           # Modelos do MongoDB (Mongoose)
+├── database/         # Cliente Prisma (conexão com PostgreSQL)
 ├── routes/           # Definição de rotas
 ├── middlewares/      # Middlewares de autenticação
-├── database/         # Configuração de conexão com MongoDB
 └── index.ts          # Arquivo principal da aplicação
+
+prisma/
+├── schema.prisma     # Esquema do banco de dados (User, Todo, enums e índices)
+└── migrations/       # Migrações geradas pelo Prisma
 ```
 
 ## Tecnologias Utilizadas
@@ -36,8 +39,8 @@ src/
 - Node.js - Runtime JavaScript
 - TypeScript - Superset tipado do JavaScript
 - Express - Framework web
-- MongoDB - Banco de dados NoSQL
-- Mongoose - ODM para MongoDB
+- PostgreSQL - Banco de dados relacional
+- Prisma - ORM para Node.js/TypeScript
 - JWT (jsonwebtoken) - Autenticação via tokens
 - bcrypt - Hash de senhas
 - dotenv - Gerenciamento de variáveis de ambiente
@@ -69,7 +72,7 @@ npm start
 # 1. Configure as variáveis de ambiente (opcional, usa valores padrão)
 cp .env.example .env
 
-# 2. Inicie os containers (MongoDB + API)
+# 2. Inicie os containers (PostgreSQL + API)
 docker-compose up
 
 # Ou em modo detached (background)
@@ -92,12 +95,9 @@ Crie um arquivo `.env` na raiz do projeto:
 # Porta do servidor
 PORT=3000
 
-# MongoDB
+# PostgreSQL (Prisma)
 # Para desenvolvimento local com Docker
-MONGODB_URI=mongodb://mongodb:27017/auth-db
-
-# Para MongoDB Atlas (produção)
-# MONGODB_URI=mongodb+srv://usuario:senha@cluster.mongodb.net/auth-db?retryWrites=true&w=majority
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/authdb?schema=public
 
 # JWT
 JWT_SECRET=sua_chave_secreta_muito_segura_aqui
@@ -129,7 +129,7 @@ Registra um novo usuário no sistema. O registro não retorna token JWT; o token
   "success": true,
   "message": "Usuário registrado com sucesso",
   "user": {
-    "id": "507f1f77bcf86cd799439011",
+    "id": "ckv1... (cuid)",
     "name": "João Silva",
     "email": "joao@email.com"
   }
@@ -176,7 +176,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 {
   "success": true,
   "message": "Acesso autorizado",
-  "userId": "507f1f77bcf86cd799439011"
+  "userId": "ckv1... (cuid)"
 }
 ```
 
@@ -206,7 +206,7 @@ Body mínimo:
 
 Resposta 201:
 ```json
-{ "success": true, "data": { "_id": "...", "title": "...", "user": "...", "completed": false, "priority": "medium", "createdAt": "...", "updatedAt": "..." } }
+{ "success": true, "data": { "id": "...", "title": "...", "userId": "...", "completed": false, "priority": "medium", "createdAt": "...", "updatedAt": "..." } }
 ```
 
 2) GET /todos — listar tarefas do usuário autenticado (com filtros opcionais)
@@ -266,14 +266,11 @@ Acesso a /protected com token inválido
 
 ### Deploy no Vercel
 
-1. Configure o MongoDB Atlas:
-   - Crie uma conta no [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
-   - Crie um cluster gratuito
-   - Obtenha a string de conexão
+1. Configure um banco PostgreSQL gerenciado (Railway, Supabase, Neon, RDS, etc.)
 
 2. Configure as variáveis de ambiente na Vercel:
    ```
-   MONGODB_URI=mongodb+srv://usuario:senha@cluster.mongodb.net/auth-db
+  DATABASE_URL=postgresql://usuario:senha@host:5432/db?schema=public
    JWT_SECRET=sua_chave_super_secreta_de_producao
    JWT_EXPIRES_IN=7d
    NODE_ENV=production
@@ -308,7 +305,7 @@ docker build -t auth-api .
 
 # Execute o container
 docker run -p 3000:3000 \
-  -e MONGODB_URI="mongodb+srv://..." \
+  -e DATABASE_URL="postgresql://usuario:senha@host:5432/db?schema=public" \
   -e JWT_SECRET="sua_chave_secreta" \
   -e NODE_ENV="production" \
   auth-api
@@ -345,7 +342,7 @@ docker run -p 3000:3000 \
 
 A aplicação registra logs detalhados:
 
-- Conexão com MongoDB
+- Conexão com PostgreSQL (Prisma)
 - Requisições HTTP (método e path)
 - Operações de registro e login
 - Validação de tokens
@@ -359,4 +356,6 @@ npm run build        # Compila TypeScript para JavaScript
 npm start            # Executa versão compilada
 npm run docker:dev   # Inicia com Docker Compose
 npm run docker:build # Rebuild dos containers Docker
+npm run prisma:generate # Gera o client Prisma
+npm run prisma:migrate  # Cria/aplica migrações
 ```
