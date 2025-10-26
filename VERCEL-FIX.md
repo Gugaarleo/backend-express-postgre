@@ -60,7 +60,7 @@ git push origin main
 
 | Variável | Valor |
 |----------|-------|
-| `MONGODB_URI` | Sua string do MongoDB Atlas |
+| `DATABASE_URL` | String de conexão PostgreSQL (Supabase/Neon/Railway/RDS/etc.) |
 | `JWT_SECRET` | Chave secreta forte |
 | `JWT_EXPIRES_IN` | `7d` |
 | `NODE_ENV` | `production` |
@@ -116,19 +116,19 @@ curl https://SUA-URL.vercel.app/api/protected \
 ### Ambiente Local (Docker)
 
 ```
-Cliente → Express (porta 3000) → Rotas → Controllers → Services → MongoDB
+Cliente → Express (porta 3000) → Rotas → Controllers → Services → PostgreSQL (Prisma)
 ```
 
 ### Vercel (Serverless)
 
 ```
-Cliente → /api → Vercel Function (api/index.ts) → Express → Rotas → Controllers → Services → MongoDB Atlas
+Cliente → /api → Vercel Function (api/index.ts) → Express → Rotas → Controllers → Services → PostgreSQL gerenciado
 ```
 
 A diferença é que na Vercel:
 - Não há servidor rodando 24/7
 - Cada requisição "acorda" uma função serverless
-- A função se conecta ao MongoDB (com cache de conexão)
+- A função inicializa o cliente Prisma para PostgreSQL (reutilização de instância)
 - Processa a requisição
 - Retorna a resposta
 - "Dorme" novamente
@@ -150,17 +150,17 @@ A diferença é que na Vercel:
 3. A Vercel fez redeploy após as mudanças?
    - Vá em Deployments e veja o timestamp
 
-### ❌ Erro de conexão com MongoDB
+### ❌ Erro de conexão com PostgreSQL
 
 1. Variáveis de ambiente configuradas?
    - Settings → Environment Variables
-   - Confirme `MONGODB_URI` está lá
+   - Confirme `DATABASE_URL` está lá
 
-2. IP liberado no MongoDB Atlas?
-   - Network Access → Add IP Address → `0.0.0.0/0`
+2. Banco acessível a partir da Vercel?
+   - Libere acesso público no provedor (ou use Connection Pooling)
 
 3. String de conexão correta?
-   - Formato: `mongodb+srv://user:pass@cluster.net/dbname`
+   - Formato: `postgresql://user:pass@host:5432/db?schema=public`
    - Sem `<` ou `>` ao redor da senha
 
 ### ❌ Timeout (Function Timeout)
@@ -168,7 +168,7 @@ A diferença é que na Vercel:
 A Vercel tem limite de 10 segundos no plano gratuito.
 
 **Soluções**:
-1. Já implementamos cache de conexão MongoDB
+1. O cliente Prisma é inicializado de forma singleton
 2. Se ainda assim der timeout, considere:
    - Railway (sem limite de tempo)
    - Render (sem limite de tempo)
@@ -195,7 +195,7 @@ Assim você alterna entre ambientes facilmente!
 Antes de testar na Vercel:
 
 - [ ] Código commitado e pushed para GitHub
-- [ ] MongoDB Atlas configurado
+- [ ] Banco PostgreSQL configurado
 - [ ] IP `0.0.0.0/0` liberado no Atlas
 - [ ] Variáveis de ambiente configuradas na Vercel
 - [ ] Deploy feito (manual ou automático)

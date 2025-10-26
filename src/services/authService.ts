@@ -1,5 +1,6 @@
 import jwt, { SignOptions } from 'jsonwebtoken';
-import User, { IUser } from '../models/User';
+import bcrypt from 'bcrypt';
+import { prisma } from '../database/connection';
 
 interface RegisterData {
   name: string;
@@ -70,7 +71,7 @@ class AuthService {
       }
 
       // Verifica se o usuário já existe
-      const existingUser = await User.findOne({ email });
+      const existingUser = await prisma.user.findUnique({ where: { email } });
       if (existingUser) {
         console.log(`❌ Tentativa de registro com email já existente: ${email}`);
         return {
@@ -79,8 +80,13 @@ class AuthService {
         };
       }
 
-      // Cria o usuário
-      const user = await User.create({ name, email, password });
+      // Hash da senha e criação do usuário
+      const salt = await bcrypt.genSalt(10);
+      const hashed = await bcrypt.hash(password, salt);
+
+      const user = await prisma.user.create({
+        data: { name, email, password: hashed },
+      });
 
 
       console.log(`✅ Usuário registrado com sucesso: ${email}`);
@@ -96,15 +102,6 @@ class AuthService {
       };
     } catch (error: any) {
       console.error('❌ Erro ao registrar usuário:', error);
-      
-      // Tratamento de erros específicos do Mongoose
-      if (error.name === 'ValidationError') {
-        const messages = Object.values(error.errors).map((err: any) => err.message);
-        return {
-          success: false,
-          message: messages.join(', '),
-        };
-      }
 
       return {
         success: false,
@@ -136,8 +133,8 @@ class AuthService {
         };
       }
 
-      // Busca o usuário incluindo a senha
-      const user = await User.findOne({ email }).select('+password');
+  // Busca o usuário
+  const user = await prisma.user.findUnique({ where: { email } });
 
       if (!user) {
         console.log(`❌ Tentativa de login com email não encontrado: ${email}`);
@@ -147,8 +144,8 @@ class AuthService {
         };
       }
 
-      // Verifica a senha
-      const isPasswordValid = await user.comparePassword(password);
+  // Verifica a senha
+  const isPasswordValid = await bcrypt.compare(password, user.password);
 
       if (!isPasswordValid) {
         console.log(`❌ Tentativa de login com senha inválida para: ${email}`);
@@ -159,7 +156,7 @@ class AuthService {
       }
 
       // Gera o token
-      const token = this.generateToken(user.id);
+  const token = this.generateToken(user.id);
 
       console.log(`✅ Login realizado com sucesso: ${email}`);
 

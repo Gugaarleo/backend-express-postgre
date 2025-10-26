@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import mongoose from 'mongoose';
+import database from '../src/database/connection';
 import authRoutes from '../src/routes/authRoutes';
 import protectedRoutes from '../src/routes/protectedRoutes';
 import todoRoutes from '../src/routes/todoRoutes';
@@ -15,41 +15,8 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Conexão com MongoDB (com cache)
-let isConnected = false;
-
-async function connectDB() {
-  if (isConnected) {
-    return;
-  }
-
-  try {
-    const mongoUri = process.env.MONGODB_URI;
-    if (!mongoUri) {
-      throw new Error('MONGODB_URI não definida');
-    }
-
-    await mongoose.connect(mongoUri);
-    isConnected = true;
-    console.log('MongoDB conectado');
-  } catch (error) {
-    console.error('Erro ao conectar MongoDB:', error);
-    throw error;
-  }
-}
-
-// Middleware de conexão
-app.use(async (req, res, next) => {
-  try {
-    await connectDB();
-    next();
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Erro ao conectar ao banco de dados',
-    });
-  }
-});
+// Inicializa conexão com Postgres via Prisma uma vez
+database.connect().catch(() => {/* handled in connection */});
 
 // Rotas
 app.get('/api', (req, res) => {

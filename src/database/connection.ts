@@ -1,9 +1,12 @@
-import mongoose from 'mongoose';
+import { PrismaClient } from '@prisma/client';
 
 class Database {
   private static instance: Database;
+  private prisma: PrismaClient;
 
-  private constructor() {}
+  private constructor() {
+    this.prisma = new PrismaClient();
+  }
 
   static getInstance(): Database {
     if (!Database.instance) {
@@ -12,42 +15,34 @@ class Database {
     return Database.instance;
   }
 
+  get client(): PrismaClient {
+    return this.prisma;
+  }
+
   async connect(): Promise<void> {
     try {
-      const mongoUri = process.env.MONGODB_URI;
-      
-      if (!mongoUri) {
-        throw new Error('MONGODB_URI não está definida nas variáveis de ambiente');
+      const dbUrl = process.env.DATABASE_URL;
+      if (!dbUrl) {
+        throw new Error('DATABASE_URL não está definida nas variáveis de ambiente');
       }
-
-      console.log('🔄 Conectando ao MongoDB...');
-      
-      await mongoose.connect(mongoUri);
-      
-      console.log('✅ MongoDB conectado com sucesso!');
-      
-      mongoose.connection.on('error', (error) => {
-        console.error('❌ Erro na conexão com MongoDB:', error);
-      });
-
-      mongoose.connection.on('disconnected', () => {
-        console.warn('⚠️  MongoDB desconectado');
-      });
-
+      console.log('🔄 Conectando ao PostgreSQL via Prisma...');
+      await this.prisma.$connect();
+      console.log('✅ PostgreSQL conectado com sucesso!');
     } catch (error) {
-      console.error('❌ Erro ao conectar ao MongoDB:', error);
+      console.error('❌ Erro ao conectar ao PostgreSQL:', error);
       process.exit(1);
     }
   }
 
   async disconnect(): Promise<void> {
     try {
-      await mongoose.disconnect();
-      console.log('MongoDB desconectado');
+      await this.prisma.$disconnect();
+      console.log('PostgreSQL desconectado');
     } catch (error) {
-      console.error('Erro ao desconectar do MongoDB:', error);
+      console.error('Erro ao desconectar do PostgreSQL:', error);
     }
   }
 }
 
+export const prisma = Database.getInstance().client;
 export default Database.getInstance();

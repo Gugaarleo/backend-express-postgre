@@ -1,28 +1,16 @@
 services:
-  mongodb:
-    image: mongo:7
-    container_name: auth-api-mongodb
+  postgres:
+    image: postgres:16
+    container_name: auth-api-postgres
     restart: unless-stopped
     ports:
-      - "27017:27017"
+      - "5432:5432"
     environment:
-      MONGO_INITDB_DATABASE: auth-db
+      POSTGRES_DB: authdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     volumes:
-      - mongodb_data:/data/db
-    networks:
-      - auth-network
-
-  mongo-express:
-    image: mongo-express:latest
-    container_name: auth-api-mongo-express
-    restart: unless-stopped
-    ports:
-      - "8081:8081"
-    environment:
-      ME_CONFIG_MONGODB_URL: mongodb://mongodb:27017/
-      ME_CONFIG_BASICAUTH: false
-    depends_on:
-      - mongodb
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - auth-network
 
@@ -34,12 +22,12 @@ services:
       - "3000:3000"
     environment:
       PORT: 3000
-      MONGODB_URI: mongodb://mongodb:27017/auth-db
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/authdb?schema=public
       JWT_SECRET: ${JWT_SECRET:-dev_secret_key_change_in_production_123456789}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       NODE_ENV: ${NODE_ENV:-development}
     depends_on:
-      - mongodb
+      - postgres
     networks:
       - auth-network
     volumes:
@@ -47,7 +35,7 @@ services:
       - /app/node_modules
 
 volumes:
-  mongodb_data:
+  postgres_data:
     driver: local
 
 networks:
