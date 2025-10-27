@@ -4,7 +4,9 @@ API RESTful completa com autenticação JWT, desenvolvida com Node.js, TypeScrip
 
 ## Link do vídeo de demonstração no YouTube parte I: https://youtu.be/ht48nmZeRqg
 
-## Link do vídeo de demonstração no YouTube parte II: https://youtu.be/iI2Nt1p01Lk
+## Link do vídeo de demonstração no YouTube parte II: https://youtu.be/-RiFtGhHHYM
+
+## Link do vídeo de demonstração no YouTube parte I/II.v2: https://youtu.be/73rS0SvQCE8
 
 ## Funcionalidades
 
