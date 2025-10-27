@@ -1,12 +1,26 @@
 import { PrismaClient } from '@prisma/client';
 
+// Singleton global para evitar múltiplas conexões em serverless
+declare global {
+  var prisma: PrismaClient | undefined;
+}
+
+const prismaClientSingleton = () => {
+  return new PrismaClient({
+    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+  });
+};
+
+export const prisma = globalThis.prisma ?? prismaClientSingleton();
+
+if (process.env.NODE_ENV !== 'production') {
+  globalThis.prisma = prisma;
+}
+
 class Database {
   private static instance: Database;
-  private prisma: PrismaClient;
 
-  private constructor() {
-    this.prisma = new PrismaClient();
-  }
+  private constructor() {}
 
   static getInstance(): Database {
     if (!Database.instance) {
@@ -16,7 +30,7 @@ class Database {
   }
 
   get client(): PrismaClient {
-    return this.prisma;
+    return prisma;
   }
 
   async connect(): Promise<void> {
@@ -26,17 +40,21 @@ class Database {
         throw new Error('DATABASE_URL não está definida nas variáveis de ambiente');
       }
       console.log('🔄 Conectando ao PostgreSQL via Prisma...');
-      await this.prisma.$connect();
+      await prisma.$connect();
       console.log('✅ PostgreSQL conectado com sucesso!');
     } catch (error) {
       console.error('❌ Erro ao conectar ao PostgreSQL:', error);
-      process.exit(1);
+      // Não faz exit em serverless
+      if (process.env.NODE_ENV !== 'production') {
+        process.exit(1);
+      }
+      throw error;
     }
   }
 
   async disconnect(): Promise<void> {
     try {
-      await this.prisma.$disconnect();
+      await prisma.$disconnect();
       console.log('PostgreSQL desconectado');
     } catch (error) {
       console.error('Erro ao desconectar do PostgreSQL:', error);
@@ -44,5 +62,4 @@ class Database {
   }
 }
 
-export const prisma = Database.getInstance().client;
 export default Database.getInstance();

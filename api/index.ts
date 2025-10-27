@@ -1,7 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import database from '../src/database/connection';
 import authRoutes from '../src/routes/authRoutes';
 import protectedRoutes from '../src/routes/protectedRoutes';
 import todoRoutes from '../src/routes/todoRoutes';
@@ -15,8 +14,11 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Inicializa conexão com Postgres via Prisma uma vez
-database.connect().catch(() => {/* handled in connection */});
+// Log para debug em produção
+app.use((req, _res, next) => {
+  console.log(`${req.method} ${req.path}`);
+  next();
+});
 
 // Rotas
 app.get('/api', (req, res) => {
