@@ -1,23 +1,16 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "api/index.ts",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/api"
-    }
-  ],
-  "functions": {
-    "api/**/*.ts": {
-      "maxDuration": 10
-    }
-  },
-  "env": {
-    "PRISMA_CLI_BINARY_TARGETS": "rhel-openssl-3.0.x"
+ "version": 2,
+ "builds": [
+  {
+   "src": "src/index.js",
+   "use": "@vercel/node",
+   "config": { "includeFiles": ["dist/*"] }
   }
+ ],
+ "routes": [
+  {
+   "src": "/(.)",
+   "dest": "src/index.js"
+  }
+ ]
 }
