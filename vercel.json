@@ -1,14 +1,23 @@
 {
-  "rewrites": [{ "source": "/api/(.*)", "destination": "/api" }],
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/index.ts",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api"
+    }
+  ],
   "functions": {
-    "api/index.ts": {
+    "api/**/*.ts": {
       "maxDuration": 10
     }
   },
-  "build": {
-    "env": {
-      "PRISMA_GENERATE_DATAPROXY": "true"
-    }
-  },
-  "installCommand": "npm install && npx prisma generate"
+  "env": {
+    "PRISMA_CLI_BINARY_TARGETS": "rhel-openssl-3.0.x"
+  }
 }

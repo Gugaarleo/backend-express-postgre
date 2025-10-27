@@ -33,6 +33,16 @@ app.use('/api', authRoutes);
 app.use('/api', protectedRoutes);
 app.use('/api', todoRoutes);
 
+// Error handler
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('Error:', err);
+  res.status(500).json({
+    success: false,
+    message: process.env.NODE_ENV === 'production' ? 'Erro interno do servidor' : err.message,
+    error: process.env.NODE_ENV === 'development' ? err.stack : undefined
+  });
+});
+
 // 404
 app.use((req, res) => {
   res.status(404).json({
@@ -41,4 +51,5 @@ app.use((req, res) => {
   });
 });
 
+// Export para Vercel Serverless
 export default app;
