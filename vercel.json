@@ -3,8 +3,5 @@
     "api/index.ts": {
       "maxDuration": 10
     }
-  },
-  "env": {
-    "DATABASE_URL": "@DATABASE_URL"
   }
 }
