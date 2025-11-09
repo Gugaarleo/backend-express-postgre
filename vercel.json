@@ -3,9 +3,5 @@
     "api/index.ts": {
       "maxDuration": 10
     }
-  },
-  "env": {
-    "JWT_SECRET": "@jwt_secret",
-    "NODE_ENV": "production"
   }
 }
