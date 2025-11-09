@@ -104,10 +104,18 @@ class AuthService {
       };
     } catch (error: any) {
       console.error('❌ Erro ao registrar usuário:', error);
+      console.error('Stack:', error.stack);
+      console.error('Prisma error code:', error.code);
+      console.error('DATABASE_URL exists:', !!process.env.DATABASE_URL);
 
+      // Mensagem mais detalhada em desenvolvimento
+      const isDev = process.env.NODE_ENV !== 'production';
+      
       return {
         success: false,
-        message: 'Erro ao registrar usuário',
+        message: isDev 
+          ? `Erro ao registrar usuário: ${error.message}` 
+          : 'Erro ao registrar usuário',
       };
     }
   }

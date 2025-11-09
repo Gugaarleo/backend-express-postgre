@@ -3,5 +3,10 @@
     "api/index.ts": {
       "maxDuration": 10
     }
+  },
+  "env": {
+    "DATABASE_URL": "@database_url",
+    "JWT_SECRET": "@jwt_secret",
+    "NODE_ENV": "production"
   }
 }
