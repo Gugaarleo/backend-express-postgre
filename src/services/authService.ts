@@ -42,9 +42,11 @@ class AuthService {
     try {
       const { name, email, password } = data;
 
+      console.log('📝 Tentativa de registro:', { name, email, hasPassword: !!password });
+
       // Validações básicas
       if (!name || !email || !password) {
-        console.log('❌ Tentativa de registro com campos vazios');
+        console.log('❌ Tentativa de registro com campos vazios:', { name: !!name, email: !!email, password: !!password });
         return {
           success: false,
           message: 'Nome, email e senha são obrigatórios',

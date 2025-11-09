@@ -9,14 +9,39 @@ dotenv.config();
 
 const app = express();
 
-// Middlewares
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// CORS configurado para aceitar requisições do frontend
+app.use(cors({
+  origin: '*', // Em produção, substitua por seu domínio do frontend
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
 
-// Log para debug em produção
+// Middlewares
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Middleware para capturar erros de JSON inválido
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (err instanceof SyntaxError && 'body' in err) {
+    console.error('❌ JSON inválido recebido:', err.message);
+    return res.status(400).json({
+      success: false,
+      message: 'JSON inválido',
+      detail: err.message
+    });
+  }
+  next(err);
+});
+
+// Log detalhado para debug
 app.use((req, _res, next) => {
-  console.log(`${req.method} ${req.path}`);
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  console.log('Headers:', JSON.stringify({
+    'content-type': req.headers['content-type'],
+    'authorization': req.headers['authorization'] ? 'Bearer ***' : 'none'
+  }));
+  console.log('Body:', JSON.stringify(req.body));
   next();
 });
 
@@ -26,6 +51,16 @@ app.get('/api', (req, res) => {
     success: true,
     message: 'API de Autenticação funcionando!',
     version: '1.0.0',
+  });
+});
+
+// Rota de debug
+app.post('/api/debug/echo', (req, res) => {
+  res.json({
+    success: true,
+    receivedHeaders: req.headers,
+    receivedBody: req.body,
+    timestamp: new Date().toISOString()
   });
 });
 
